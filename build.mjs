@@ -5,7 +5,7 @@ const watchMode = process.argv.includes("-w");
 const build = await context({
 	entryPoints: ["src/index.ts"],
 	bundle: true,
-	outdir: "dist",
+	outfile: "dist.js",
 });
 
 if (watchMode) await build.watch();
