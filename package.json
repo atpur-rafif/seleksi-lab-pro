@@ -10,6 +10,8 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "esbuild": "^0.23.0"
+    "esbuild": "^0.23.0",
+    "sqlite3": "^5.1.7",
+    "typeorm": "^0.3.20"
   }
 }
