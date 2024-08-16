@@ -13,5 +13,8 @@
     "esbuild": "^0.23.0",
     "sqlite3": "^5.1.7",
     "typeorm": "^0.3.20"
+  },
+  "devDependencies": {
+    "@types/node": "^22.3.0"
   }
 }

@@ -1,5 +1,3 @@
-import { createServer } from "node:http";
-
 type RequestResponse = typeof createServer extends (
 	config: any,
 	callback: (req: infer Req, res: infer Res) => any,
