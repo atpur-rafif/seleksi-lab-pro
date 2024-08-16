@@ -1,5 +1,5 @@
 import { Entity, Column, PrimaryGeneratedColumn } from "typeorm";
-import { Pretify } from "../type";
+import { Pretify } from "../module/type";
 
 @Entity()
 export class User {

@@ -5,7 +5,7 @@ import {
 	CreateDateColumn,
 	UpdateDateColumn,
 } from "typeorm";
-import { Pretify } from "../type";
+import { Pretify } from "../module/type";
 
 @Entity()
 export class Film {
