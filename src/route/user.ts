@@ -1,5 +1,5 @@
 import { RouterError } from "../module/router";
-import { router } from "../module/route";
+import { router } from "./index";
 
 router.defineRoute("POST", "/login", async (_req, _res) => {
 	throw new RouterError("Not implemented");

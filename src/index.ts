@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { router } from "./module/route";
+import { router } from "./route/index";
 import "./route/film";
 import "./route/user";
 

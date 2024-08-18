@@ -1,5 +1,5 @@
 import { RouterError } from "../module/router";
-import { router } from "../module/route";
+import { router } from "./index";
 import { FormDataParser } from "../module/form_data";
 
 router.defineRoute("GET", "/films", async (_req, _res) => {
