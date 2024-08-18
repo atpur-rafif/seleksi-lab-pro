@@ -1,5 +1,7 @@
 import { createServer } from "node:http";
 import { router } from "./module/route";
+import "./route/film";
+import "./route/user";
 
 async function main() {
 	const server = createServer({}, (req, res) => {
