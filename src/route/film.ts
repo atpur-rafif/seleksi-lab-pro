@@ -10,7 +10,7 @@ router.defineRoute("GET", "/films", async (_req, _res) => {
 router.defineRoute("POST", "/films", async (req, res) => {
 	const parser = new FormDataParser(
 		req,
-		new FormFileToDisk("http://localhost:3000/", "tmp"),
+		new FormFileToDisk("http://localhost:8080/static/", "static"),
 	);
 	const data = await parser.parse();
 	console.log(data);
