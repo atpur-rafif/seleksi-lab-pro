@@ -7,8 +7,8 @@ type RequestResponse = typeof createServer extends (
 ) => any
 	? [Req, Res]
 	: never;
-type Request = RequestResponse[0];
-type Response = RequestResponse[1];
+export type Request = RequestResponse[0];
+export type Response = RequestResponse[1];
 
 export class RouterError extends Error {
 	statusCode: number;
@@ -59,7 +59,9 @@ export class Router {
 			);
 			if (!status) throw new RouterError("Not Found", 404);
 		} catch (e) {
-			const error = e instanceof RouterError ? e : new RouterError();
+			const isRouterError = e instanceof RouterError;
+			if (!isRouterError) console.error(e);
+			const error = isRouterError ? e : new RouterError();
 			res.statusCode = error.statusCode;
 			res.write(JSON.stringify({ error: error.message }));
 			res.end();
