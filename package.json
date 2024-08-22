@@ -12,6 +12,7 @@
   "dependencies": {
     "busboy": "^1.6.0",
     "esbuild": "^0.23.0",
+    "mime": "^4.0.4",
     "sqlite3": "^5.1.7",
     "typeorm": "^0.3.20"
   },

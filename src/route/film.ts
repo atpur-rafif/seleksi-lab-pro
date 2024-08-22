@@ -3,6 +3,38 @@ import { router } from "./index";
 import { FormDataParser } from "../module/formData";
 import { Validator } from "../module/validator";
 import { FormFileToDisk } from "../module/formFileToDisk";
+import mime from "mime";
+
+const formFileToDisk = new FormFileToDisk(
+	"http://localhost:8080/static/",
+	"static",
+	(name, { filename }) => {
+		const mimeType = mime.getType(filename) || "/";
+		const [type, _] = mimeType.split("/");
+
+		switch (name) {
+			case "video":
+				if (type !== "video")
+					throw new RouterError("Expected video file for field 'video'", 400);
+				break;
+			case "cover_image":
+				if (type !== "image")
+					throw new RouterError(
+						"Expected image file for field 'cover_image'",
+						400,
+					);
+				break;
+		}
+	},
+);
+
+const formDataParser = new FormDataParser({
+	formFile: formFileToDisk,
+	forceField: {
+		array: ["genre"],
+		file: ["video", "cover_image"],
+	},
+});
 
 router.defineRoute("GET", "/films", async (_req, _res) => {
 	throw new RouterError("Not implemented");
@@ -17,17 +49,10 @@ router.defineRoute(
 		res.send("WOKE");
 	},
 	{
-		parser: new FormDataParser({
-			formFile: new FormFileToDisk("http://localhost:8080/static/", "static"),
-			forceField: {
-				array: ["genre"],
-				file: ["video", "cover_image"],
-			},
-		}),
+		parser: formDataParser,
 		validator: new Validator({
 			type: "object",
 			schema: {
-				id: { type: "string" },
 				title: { type: "string" },
 				description: { type: "string" },
 				director: { type: "string" },

@@ -20,15 +20,8 @@ export class FormDataParser {
 	}) {
 		this.formFile = formFile;
 
-		this.forcedArray = new Set(forceField.array);
-		this.forcedFile = new Set(forceField.file);
-		try {
-		} catch (error) {
-			throw new RouterError(
-				"Error parsing the body (Only support multipart/formdata encoding)",
-				400,
-			);
-		}
+		this.forcedArray = new Set(forceField?.array);
+		this.forcedFile = new Set(forceField?.file);
 	}
 
 	private async registerField(
@@ -59,38 +52,50 @@ export class FormDataParser {
 		data[name] = await this.formFile.save(name, stream, info);
 	}
 
-	private wrapPromise(promise: Promise<void>): Promise<Error | void> {
-		return new Promise((resolve, _) => {
-			promise.then(resolve).catch((e) => resolve(e));
-		});
-	}
-
 	async parse(request: Request) {
-		const promised: Promise<Error | void>[] = [];
-		const bb = busboy({ headers: request.headers });
-		const data = {};
+		try {
+			const promised: Promise<Error | void>[] = [];
+			const bb = busboy({ headers: request.headers });
+			const data = {};
 
-		const dataPromise = new Promise<void>((resolve) => {
-			bb.on("close", resolve);
-		});
-		bb.on("field", (...param) => {
-			promised.push(this.wrapPromise(this.registerField(data, ...param)));
-		});
-		bb.on("file", (...param) => {
-			promised.push(this.wrapPromise(this.registerFile(data, ...param)));
-		});
-		request.pipe(bb);
+			const addPromise = (promise: Promise<void>) => {
+				promised.push(
+					new Promise((resolve, _) => {
+						promise.then(resolve).catch((e) => {
+							bb.emit("close");
+							resolve(e);
+						});
+					}),
+				);
+			};
 
-		let resolved = [];
-		promised.push(dataPromise);
-		while (resolved.length !== promised.length) {
-			resolved = await Promise.all(promised);
-			resolved.map((e) => {
-				if (e) throw e;
+			const dataPromise = new Promise<void>((resolve) => {
+				bb.on("close", resolve);
 			});
-		}
+			bb.on("field", (...param) => {
+				addPromise(this.registerField(data, ...param));
+			});
+			bb.on("file", (...param) => {
+				addPromise(this.registerFile(data, ...param));
+			});
+			request.pipe(bb);
 
-		await dataPromise;
-		return data;
+			let resolved: (Error | void)[] = [];
+			promised.push(dataPromise);
+			while (resolved.length !== promised.length) {
+				resolved = await Promise.all(promised);
+				resolved.map((e) => {
+					if (e) throw e;
+				});
+			}
+
+			return data;
+		} catch (error) {
+			if (error instanceof RouterError) throw error;
+			throw new RouterError(
+				"Error parsing the body (Only support multipart/formdata encoding)",
+				400,
+			);
+		}
 	}
 }

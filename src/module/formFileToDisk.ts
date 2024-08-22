@@ -5,13 +5,16 @@ import busboy from "busboy";
 import internal from "stream";
 import { FormFile } from "./formFile";
 
+type Callback = (name: string, info: busboy.FileInfo) => void;
 export class FormFileToDisk extends FormFile {
 	baseUrl: string;
 	directory: string;
-	constructor(baseUrl: string, directory: string) {
+	onFile?: Callback;
+	constructor(baseUrl: string, directory: string, onFile?: Callback) {
 		super();
 		this.baseUrl = baseUrl;
 		this.directory = directory;
+		this.onFile = onFile;
 		mkdirSync(directory, { recursive: true });
 	}
 
@@ -20,10 +23,11 @@ export class FormFileToDisk extends FormFile {
 	}
 
 	async save(
-		_name: string,
+		name: string,
 		stream: internal.Readable,
 		info: busboy.FileInfo,
 	): Promise<string> {
+		if (this.onFile) this.onFile(name, info);
 		const filename = `${this.generateRandom()}-${info.filename}`;
 		const path = resolvePath(this.directory, filename);
 		const disk = createWriteStream(path);

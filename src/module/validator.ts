@@ -76,7 +76,7 @@ export class Validator<T extends Field> {
 			case "object":
 				if (typeof value !== "object") this.throwError(field.type, key);
 
-				const result = {};
+				result = {};
 				for (const [objectKey, objectField] of Object.entries(field.schema)) {
 					const item = value[objectKey];
 					if (objectField.optional && !item) continue;
