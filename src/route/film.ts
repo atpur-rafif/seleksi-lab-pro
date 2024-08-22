@@ -7,6 +7,7 @@ import mime from "mime";
 import { filmRepository } from "../entity/repository";
 import { Film } from "../entity/film";
 import { basename } from "path";
+import { auth } from "../module/auth";
 
 const formFileToDisk = new FormFileToDisk(
 	"http://localhost:8080/static/",
@@ -56,6 +57,8 @@ router.defineRoute(
 	"POST",
 	"/films",
 	async (req, res, { validator }) => {
+		await auth.getAdmin(req);
+
 		const data = validator.validate(await parser.parse(req));
 		const newFilm = new Film(
 			Object.assign(data, {
@@ -91,6 +94,8 @@ router.defineRoute(
 	"PUT",
 	"/films/*",
 	async (req, res, { validator }) => {
+		await auth.getAdmin(req);
+
 		const id = basename(req.url);
 		const data = validator.validate(await parser.parse(req));
 		const film = await filmRepository.findOneBy({ id });
@@ -121,6 +126,8 @@ router.defineRoute(
 );
 
 router.defineRoute("DELETE", "/films/*", async (req, res) => {
+	await auth.getAdmin(req);
+
 	const id = basename(req.url);
 	const film = await filmRepository.findOneBy({ id });
 	if (!film) throw new RouterError("Film not found", 404);

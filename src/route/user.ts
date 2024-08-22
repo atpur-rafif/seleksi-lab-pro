@@ -5,12 +5,15 @@ import { router } from "./index";
 import { Validator } from "../module/validator";
 import { FormDataParser } from "../module/formData";
 import { FormFileIgnore } from "../module/formFile";
+import { auth } from "../module/auth";
 
 const parser = new FormDataParser({
 	formFile: new FormFileIgnore(),
 });
 
-router.defineRoute("GET", "/users", async (_, res) => {
+router.defineRoute("GET", "/users", async (req, res) => {
+	await auth.getAdmin(req);
+
 	const users = await userRepository.find();
 	res.send({
 		status: "success",
@@ -19,6 +22,8 @@ router.defineRoute("GET", "/users", async (_, res) => {
 });
 
 router.defineRoute("GET", "/user/*", async (req, res) => {
+	await auth.getAdmin(req);
+
 	const id = basename(req.url);
 	const user = await userRepository.findOneBy({ id });
 	if (!user) throw new RouterError("User not found", 400);
@@ -32,6 +37,8 @@ router.defineRoute(
 	"POST",
 	"/users/*/balance",
 	async (req, res, { validator }) => {
+		await auth.getAdmin(req);
+
 		const id = basename(dirname(req.url));
 		const user = await userRepository.findOneBy({ id });
 		if (!user) throw new RouterError("User not found", 400);
@@ -56,6 +63,8 @@ router.defineRoute(
 );
 
 router.defineRoute("DELETE", "/users/*", async (req, res) => {
+	await auth.getAdmin(req);
+
 	const id = basename(req.url);
 	const user = await userRepository.findOneBy({ id });
 	if (!user) throw new RouterError("User not found", 400);

@@ -19,7 +19,7 @@ class Auth {
 	}
 
 	get(req: Request) {
-		const [type, token] = req.headers["authorization"].split(" ");
+		const [type, token] = (req.headers["authorization"] ?? "").split(" ");
 		if (!type) throw new RouterError("Invalid authorization type", 400);
 		const decoded = this.decode(token);
 		if (!decoded) throw new RouterError("Invalid authorization token", 400);
