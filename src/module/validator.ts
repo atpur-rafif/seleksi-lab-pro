@@ -62,7 +62,9 @@ export class Validator<T extends Field> {
 				if (typeof value !== "string") this.throwError(field.type, key);
 				break;
 			case "number":
-				if (typeof value !== "number") this.throwError(field.type, key);
+				if (typeof value === "string") value = parseInt(value);
+				if (typeof value !== "number" || Number.isNaN(value))
+					this.throwError(field.type, key);
 				break;
 			case "array":
 				if (!Array.isArray(value)) this.throwError(field.type, key);
