@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { router } from "./route/index";
 import "./route/film";
 import "./route/user";
+import "./route/admin";
 import { dataSource } from "./entity/config";
 
 async function main() {

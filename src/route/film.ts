@@ -4,11 +4,10 @@ import { FormDataParser } from "../module/formData";
 import { Validator } from "../module/validator";
 import { FormFileToDisk } from "../module/formFileToDisk";
 import mime from "mime";
-import { dataSource } from "../entity/config";
+import { filmRepository } from "../entity/repository";
 import { Film } from "../entity/film";
 import { basename } from "node:path";
 
-const filmRepository = dataSource.getRepository(Film);
 const formFileToDisk = new FormFileToDisk(
 	"http://localhost:8080/static/",
 	"static",
