@@ -4,7 +4,11 @@ import { FormDataParser } from "../module/formData";
 import { Validator } from "../module/validator";
 import { FormFileToDisk } from "../module/formFileToDisk";
 import mime from "mime";
+import { dataSource } from "../entity/config";
+import { Film } from "../entity/film";
+import { basename } from "node:path";
 
+const filmRepository = dataSource.getRepository(Film);
 const formFileToDisk = new FormFileToDisk(
 	"http://localhost:8080/static/",
 	"static",
@@ -27,8 +31,7 @@ const formFileToDisk = new FormFileToDisk(
 		}
 	},
 );
-
-const formDataParser = new FormDataParser({
+const parser = new FormDataParser({
 	formFile: formFileToDisk,
 	forceField: {
 		array: ["genre"],
@@ -36,20 +39,38 @@ const formDataParser = new FormDataParser({
 	},
 });
 
-router.defineRoute("GET", "/films", async (_req, _res) => {
-	throw new RouterError("Not implemented");
+router.defineRoute("GET", "/films", async (_, res) => {
+	res.send({
+		status: "success",
+		data: (await filmRepository.find()).map((v) => v.serialize()),
+	});
+});
+
+router.defineRoute("GET", "/films/*", async (req, res) => {
+	const id = basename(req.url || "");
+	const film = await filmRepository.findOneBy({ id });
+	if (!film) throw new RouterError("Film not found", 404);
+	res.send(film.serialize());
 });
 
 router.defineRoute(
 	"POST",
 	"/films",
-	async (req, res, { parser, validator }) => {
+	async (req, res, { validator }) => {
 		const data = validator.validate(await parser.parse(req));
-		console.log(data);
-		res.send("WOKE");
+		const newFilm = new Film(
+			Object.assign(data, {
+				video_url: data.video,
+				cover_image_url: data.cover_image,
+			}),
+		);
+		await filmRepository.save(newFilm);
+		res.send({
+			status: "success",
+			data: newFilm.serialize(),
+		});
 	},
 	{
-		parser: formDataParser,
 		validator: new Validator({
 			type: "object",
 			schema: {
@@ -67,14 +88,43 @@ router.defineRoute(
 	},
 );
 
-router.defineRoute("GET", "/films/*", async (_req, _res) => {
-	throw new RouterError("Not implemented");
-});
+router.defineRoute(
+	"PUT",
+	"/films/*",
+	async (req, res, { validator }) => {
+		const id = basename(req.url || "");
+		const data = validator.validate(await parser.parse(req));
+		const film = await filmRepository.findOneBy({ id });
+		if (!film) throw new RouterError("Film not found", 404);
+		Object.assign(film, data);
+		filmRepository.save(film);
+		res.send({
+			status: "success",
+			data: film.serialize(),
+		});
+	},
+	{
+		validator: new Validator({
+			type: "object",
+			schema: {
+				title: { type: "string" },
+				description: { type: "string" },
+				director: { type: "string" },
+				release_year: { type: "number" },
+				genre: { type: "array", item: { type: "string" } },
+				price: { type: "number" },
+				duration: { type: "number" },
+				video: { type: "string", optional: true },
+				cover_image: { type: "string", optional: true },
+			},
+		}),
+	},
+);
 
-router.defineRoute("PUT", "/films/*", async (_req, _res) => {
-	throw new RouterError("Not implemented");
-});
-
-router.defineRoute("DELETE", "/films/*", async (_req, _res) => {
-	throw new RouterError("Not implemented");
+router.defineRoute("DELETE", "/films/*", async (req, res) => {
+	const id = basename(req.url || "");
+	const film = await filmRepository.findOneBy({ id });
+	if (!film) throw new RouterError("Film not found", 404);
+	filmRepository.remove(film);
+	res.send(film.serialize());
 });

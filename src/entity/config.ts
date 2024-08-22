@@ -8,6 +8,5 @@ export const dataSource = new DataSource({
 	type: "sqlite",
 	database: "tmp.sqlite",
 	synchronize: true,
-	logging: true,
 	entities: [Film],
 });

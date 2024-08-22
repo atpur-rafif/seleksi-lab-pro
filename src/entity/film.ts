@@ -9,7 +9,8 @@ import { Pretify } from "../module/type";
 
 @Entity()
 export class Film {
-	@PrimaryGeneratedColumn("uuid")
+	// @PrimaryGeneratedColumn("uuid")
+	@PrimaryGeneratedColumn("increment")
 	id: string;
 
 	@Column("varchar")
@@ -43,8 +44,8 @@ export class Film {
 	@Column("varchar")
 	video_url: string;
 
-	@Column("varchar")
-	cover_image_url: string;
+	@Column("varchar", { nullable: true })
+	cover_image_url: string | null;
 
 	@CreateDateColumn()
 	created_at: string;
@@ -52,7 +53,23 @@ export class Film {
 	@UpdateDateColumn()
 	updated_at: string;
 
-	constructor(value: Omit<Pretify<Film>, "id" | "created_at" | "updated_at">) {
+	constructor(
+		value: Pretify<
+			Omit<
+				Film,
+				"id" | "created_at" | "updated_at" | "cover_image_url" | "serialize"
+			>
+		>,
+	) {
 		Object.assign(this, value);
+	}
+
+	serialize(): Pretify<Film> {
+		const serialized = { ...this };
+		delete serialized._genre;
+		return {
+			...serialized,
+			genre: this.genre,
+		};
 	}
 }

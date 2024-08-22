@@ -66,7 +66,7 @@ export class Router {
 			if (!isRouterError) console.error(e);
 			const error = isRouterError ? e : new RouterError();
 			res.statusCode = error.statusCode;
-			res.write(JSON.stringify({ error: error.message }));
+			res.write(JSON.stringify({ status: "error", message: error.message }));
 			res.end();
 		}
 	}
