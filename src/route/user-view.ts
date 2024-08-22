@@ -23,7 +23,7 @@ function createHTML(body: string) {
 	`
 }
 
-router.defineRoute("GET", "/register", async (req, res) => {
+router.defineRoute("GET", "/user-register", async (req, res) => {
 	const user = await auth.getUser(req);
 	if (user) {
 		res.statusCode = 303
@@ -45,11 +45,14 @@ router.defineRoute("GET", "/register", async (req, res) => {
 											`))
 })
 
-router.defineRoute("POST", "/register", async (req, res, { validator, emailPattern }) => {
+router.defineRoute("POST", "/user-register", async (req, res, { validator, emailPattern }) => {
 	try {
 		const data = validator.validate(await parser.parse(req))
 		if (!emailPattern.test(data.email))
 			throw new RouterError("Invalid email", 400)
+
+		if (data.password.length < 8)
+			throw new RouterError("Password too short, minimum 8 character", 400)
 
 		const result = await userRepository.existsBy({ email: data.email })
 		if (result)
@@ -64,7 +67,7 @@ router.defineRoute("POST", "/register", async (req, res, { validator, emailPatte
 		res.send(createHTML(`
 <main style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; width: 100%; gap: 0.5rem;">
 	User ${data.username} registered
-	<a href="/login" style="text-decoration: none;">
+	<a href="/user-login" style="text-decoration: none;">
 		<button>Login</button>
 	</a>
 </main>
@@ -85,7 +88,7 @@ router.defineRoute("POST", "/register", async (req, res, { validator, emailPatte
 											`))
 	}
 }, {
-	emailPattern: /^\S+@\S+\.\S+$/,
+	emailPattern: /^\S+@\S+\.(\S+){2,}$/,
 	validator: new Validator({
 		type: "object",
 		schema: {
@@ -96,7 +99,7 @@ router.defineRoute("POST", "/register", async (req, res, { validator, emailPatte
 	})
 })
 
-router.defineRoute("GET", "/login", async (req, res) => {
+router.defineRoute("GET", "/user-login", async (req, res) => {
 	const user = await auth.getUser(req);
 	if (user) {
 		res.statusCode = 303
@@ -117,7 +120,7 @@ router.defineRoute("GET", "/login", async (req, res) => {
 											`))
 })
 
-router.defineRoute("POST", "/login", async (req, res, { validator }) => {
+router.defineRoute("POST", "/user-login", async (req, res, { validator }) => {
 	try {
 		const data = validator.validate(await parser.parse(req))
 
@@ -154,6 +157,13 @@ router.defineRoute("POST", "/login", async (req, res, { validator }) => {
 	})
 })
 
+router.defineRoute("GET", "/user-logout", async (req, res) => {
+	res.statusCode = 303;
+	res.setHeader("Set-Cookie", "jwt-token=none")
+	res.setHeader("Location", "/browse")
+	res.end();
+})
+
 // I know this not the most eficient way to do query. Unfortunately, time not on my side (2 hour left).
 const pageSize = 10
 router.defineRoute("GET", "/browse", async (req, res) => {
@@ -185,7 +195,7 @@ router.defineRoute("GET", "/browse", async (req, res) => {
 	<form style="padding-top: 3rem; display: flex; flex-direction: column">
 		<div>
 			(Page: <input type="number" name="page" value="${page}"/>)
-			(Bought Only: <input type="checkbox" name="boughtOnly" ${boughtOnly ? "checked" : ""}/>)
+			${user ? `(Bought Only: <input type="checkbox" name="boughtOnly" ${boughtOnly ? "checked" : ""}/>)` : ""}
 			(<input type="text" placeholder="Keyword" name="keyword" />)
 		</div>
 		<button>Apply Filter</button>
@@ -266,7 +276,7 @@ router.defineRoute("POST", "/buy/*", async (req, res) => {
 
 		if (!user) {
 			res.statusCode = 303
-			res.setHeader("Location", "/login")
+			res.setHeader("Location", "/user-login")
 			res.end();
 			return;
 		}

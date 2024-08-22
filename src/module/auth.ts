@@ -32,7 +32,7 @@ class Auth {
 		if (!data || !data["jwt-token"]) return null;
 
 		const token = data["jwt-token"]
-		const { identifier, type } = this.decode(token)
+		const { identifier, type } = this.decode(token) ?? {}
 		if (type !== "user") return null;
 
 		const user = await userRepository.findOneBy({ email: identifier });
@@ -40,7 +40,7 @@ class Auth {
 	}
 
 	async getAdmin(req: Request) {
-		const { identifier, type } = this.get(req);
+		const { identifier, type } = this.get(req) ?? {};
 		if (type !== "admin") throw new RouterError("Invalid account type", 400);
 
 		const admin = await adminRepository.findOneBy({ username: identifier });
