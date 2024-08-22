@@ -42,12 +42,15 @@ export class Router {
 		});
 	}
 
-	defineRoute(
+	defineRoute<T>(
 		method: string,
 		path: string,
-		invokee: (...params: [Request, ExtendedResponse]) => Promise<void>,
+		invokee: (req: Request, res: ExtendedResponse, dep: T) => Promise<void>,
+		dependency?: T,
 	) {
-		this.invoker.definePath(this.makeRoute(method, path), invokee);
+		this.invoker.definePath(this.makeRoute(method, path), (req, res) =>
+			invokee(req, res, dependency),
+		);
 	}
 
 	async run(method: string, targetPath: string, req: Request, res: Response) {
