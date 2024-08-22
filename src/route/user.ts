@@ -18,7 +18,7 @@ router.defineRoute("GET", "/users", async (req, res) => {
 	});
 });
 
-router.defineRoute("GET", "/user/*", async (req, res) => {
+router.defineRoute("GET", "/users/*", async (req, res) => {
 	await auth.getAdmin(req);
 
 	const id = basename(req.pathname);
