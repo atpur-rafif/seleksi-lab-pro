@@ -1,5 +1,6 @@
 import { createServer } from "http";
 import { PathInvoker } from "./invoker";
+import { parse } from "url";
 
 type RequestResponse = typeof createServer extends (
 	config: any,
@@ -19,12 +20,17 @@ export class RouterError extends Error {
 	}
 }
 
+type ExtendedRequest = Request & {
+	pathname: string,
+	param: Record<string, string>
+}
+
 type ExtendedResponse = Response & {
 	send(data: object | string): void;
 };
 
 export class Router {
-	private invoker: PathInvoker<[Request, ExtendedResponse]> = new PathInvoker();
+	private invoker: PathInvoker<[ExtendedRequest, ExtendedResponse]> = new PathInvoker();
 
 	private makeRoute(method: string, path: string) {
 		return `${method}${path}`;
@@ -44,10 +50,17 @@ export class Router {
 		});
 	}
 
+	private extendRequest(req: Request): ExtendedRequest {
+		return Object.assign(req, {
+			param: {},
+			pathname: parse(req.url).pathname
+		})
+	}
+
 	defineRoute<T>(
 		method: string,
 		path: string,
-		invokee: (req: Request, res: ExtendedResponse, dep: T) => Promise<void>,
+		invokee: (req: ExtendedRequest, res: ExtendedResponse, dep: T) => Promise<void>,
 		dependency?: T,
 	) {
 		this.invoker.definePath(this.makeRoute(method, path), (req, res) =>
@@ -59,7 +72,7 @@ export class Router {
 		try {
 			const status = await this.invoker.invoke(
 				this.makeRoute(method, targetPath),
-				req,
+				this.extendRequest(req),
 				this.extendResponse(res),
 			);
 			if (!status) throw new RouterError("Not Found", 404);

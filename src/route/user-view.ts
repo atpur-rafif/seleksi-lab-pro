@@ -1,8 +1,16 @@
 import { basename } from "path";
 import { router } from ".";
 import { Film } from "../entity/film";
-import { filmRepository } from "../entity/repository";
+import { filmRepository, userRepository } from "../entity/repository";
+import { FormDataParser } from "../module/formData";
+import { FormFileIgnore } from "../module/formFile";
+import { Validator } from "../module/validator";
+import { RouterError } from "../module/router";
+import { User } from "../entity/user";
+import bcrypt from "bcryptjs"
+import { auth } from "../module/auth";
 
+const parser = new FormDataParser({ formFile: new FormFileIgnore() })
 function createHTML(body: string) {
 	return `
 <!DOCTYPE html>
@@ -16,35 +24,143 @@ function createHTML(body: string) {
 }
 
 router.defineRoute("GET", "/register", async (req, res) => {
+	const user = await auth.getUser(req);
+	if (user) {
+		res.statusCode = 303
+		res.setHeader("Location", "/browse")
+		res.end();
+		return;
+	}
+
 	res.send(createHTML(`
 <main style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; width: 100%;">
 	<h1>Register</h1>
 	<form method="POST" style="display: flex; flex-direction: column; gap: 0.5rem;">
-		<input type="text" name="username" placeholder="username" value="test"/>
-		<input type="text" name="email" placeholder="email" value="test"/>
-		<input type="text" name="password" placeholder="password" value="test"/>
+		<input type="text" name="username" placeholder="username" />
+		<input type="text" name="email" placeholder="email" />
+		<input type="text" name="password" placeholder="password" />
 		<button type="submit">Register</button>
 	</form>
 </main>
 											`))
 })
 
-router.defineRoute("GET", "/login", async (req, res) => {
-	res.send(createHTML(`
+router.defineRoute("POST", "/register", async (req, res, { validator, emailPattern }) => {
+	try {
+		const data = validator.validate(await parser.parse(req))
+		if (!emailPattern.test(data.email))
+			throw new RouterError("Invalid email", 400)
+
+		const result = await userRepository.existsBy({ email: data.email })
+		if (result)
+			throw new RouterError("Email already registered", 400)
+
+		const user = new User({
+			...data,
+			balance: 0,
+			password: await bcrypt.hash(data.password, 10)
+		})
+		userRepository.save(user);
+		res.send(createHTML(`
+<main style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; width: 100%; gap: 0.5rem;">
+	User ${data.username} registered
+	<a href="/login" style="text-decoration: none;">
+		<button>Login</button>
+	</a>
+</main>
+
+												`))
+	} catch (e) {
+		if (!(e instanceof RouterError)) e = new RouterError("Unknown error")
+		res.send(createHTML(`
 <main style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; width: 100%;">
 	<h1>Register</h1>
 	<form method="POST" style="display: flex; flex-direction: column; gap: 0.5rem;">
-		<input type="text" name="email" placeholder="email" value="test"/>
-		<input type="text" name="password" placeholder="password" value="test"/>
+		<input type="text" name="username" placeholder="username" />
+		<input type="text" name="email" placeholder="email" />
+		<input type="text" name="password" placeholder="password" />
+		<p style="margin: 0; text-align: center;">${e ? e.message : ""}</p>
 		<button type="submit">Register</button>
 	</form>
 </main>
 											`))
+	}
+}, {
+	emailPattern: /^\S+@\S+\.\S+$/,
+	validator: new Validator({
+		type: "object",
+		schema: {
+			username: { type: "string" },
+			email: { type: "string" },
+			password: { type: "string" }
+		}
+	})
+})
+
+router.defineRoute("GET", "/login", async (req, res) => {
+	const user = await auth.getUser(req);
+	if (user) {
+		res.statusCode = 303
+		res.setHeader("Location", "/browse")
+		res.end();
+		return;
+	}
+
+	res.send(createHTML(`
+<main style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; width: 100%;">
+	<h1>Login</h1>
+	<form method="POST" style="display: flex; flex-direction: column; gap: 0.5rem;">
+		<input type="text" name="email" placeholder="email" value="test"/>
+		<input type="text" name="password" placeholder="password" value="test"/>
+		<button type="submit">Login</button>
+	</form>
+</main>
+											`))
+})
+
+router.defineRoute("POST", "/login", async (req, res, { validator }) => {
+	try {
+		const data = validator.validate(await parser.parse(req))
+
+		const user = await userRepository.findOneBy({ email: data.email })
+		const result = await bcrypt.compare(data.password, user?.password)
+		if (!user || !result)
+			throw new RouterError("Invalid credentials", 400)
+
+		res.statusCode = 303
+		res.setHeader("Location", "/browse")
+		res.setHeader("Set-Cookie", `jwt-token=${auth.sign({ identifier: user.email, type: "user" })}`)
+		res.end();
+	} catch (e) {
+		if (!(e instanceof RouterError)) e = new RouterError("Unknown error")
+		res.send(createHTML(`
+<main style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; width: 100%;">
+	<h1>Login</h1>
+	<form method="POST" style="display: flex; flex-direction: column; gap: 0.5rem;">
+		<input type="text" name="email" placeholder="email" value="a@a.a"/>
+		<input type="text" name="password" placeholder="password" value="a"/>
+		<p style="margin: 0; text-align: center;">${e ? e.message : ""}</p>
+		<button type="submit">Login</button>
+	</form>
+</main>
+											`))
+	}
+}, {
+	validator: new Validator({
+		type: "object",
+		schema: {
+			email: { type: "string" },
+			password: { type: "string" }
+		}
+	})
 })
 
 router.defineRoute("GET", "/browse", async (req, res) => {
 	const [film] = await filmRepository.find()
 	const films = Array(100).fill(film) as Film[]
+	const user = await auth.getUser(req)
+
+	console.log(user)
 	res.send(createHTML(`
 <main style="width: 100vw; display: flex; justify-content: center; align-items: center; flex-direction: column; gap: 2rem;">
 	<form>
@@ -75,7 +191,7 @@ router.defineRoute("GET", "/browse", async (req, res) => {
 })
 
 router.defineRoute("GET", "/film-detail/*", async (req, res) => {
-	const id = basename(req.url);
+	const id = basename(req.pathname);
 	const film = await filmRepository.findOneBy({ id });
 	console.log(film)
 	res.send(createHTML(`

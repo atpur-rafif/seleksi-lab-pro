@@ -10,8 +10,6 @@ import { parse } from "url";
 async function main() {
 	await dataSource.initialize();
 	const server = createServer({}, (req, res) => {
-		req.url = parse(req.url).pathname;
-
 		res.setHeader("Access-Control-Allow-Origin", "*");
 		res.setHeader("Access-Control-Allow-Methods", "*");
 		res.setHeader("Access-Control-Allow-Headers", "Authorization,*");
@@ -22,7 +20,8 @@ async function main() {
 			return;
 		}
 
-		router.run(req.method ?? "GET", req.url ?? "/", req, res);
+		const pathname = parse(req.url).pathname;
+		router.run(req.method ?? "GET", pathname ?? "/", req, res);
 	});
 	server.listen(8080);
 }

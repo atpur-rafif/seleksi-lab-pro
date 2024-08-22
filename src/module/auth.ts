@@ -1,8 +1,9 @@
-import { adminRepository } from "../entity/repository";
+import { adminRepository, userRepository } from "../entity/repository";
 import { Request, RouterError } from "./router";
 import jwt from "jsonwebtoken";
+import cookie from "cookie"
 
-type AuthType = { name: string; type: string };
+type AuthType = { identifier: string; type: string };
 class Auth {
 	static round: number = 10;
 
@@ -26,9 +27,21 @@ class Auth {
 		return decoded;
 	}
 
+	async getUser(req: Request) {
+		const data = cookie.parse(req.headers.cookie || "")
+		if (!data || !data["jwt-token"]) return null;
+
+		const token = data["jwt-token"]
+		const { identifier: name, type } = this.decode(token)
+		if (type !== "user") return null;
+
+		const user = await userRepository.findOneBy({ email: name });
+		return user;
+	}
+
 	async getAdmin(req: Request) {
-		const { name, type } = this.get(req);
-		if (!type) throw new RouterError("Invalid account type", 400);
+		const { identifier: name, type } = this.get(req);
+		if (type !== "admin") throw new RouterError("Invalid account type", 400);
 
 		const admin = await adminRepository.findOneBy({ username: name });
 		if (!admin) throw new RouterError("Admin account not found", 400);

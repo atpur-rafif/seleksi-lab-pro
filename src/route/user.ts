@@ -21,7 +21,7 @@ router.defineRoute("GET", "/users", async (req, res) => {
 router.defineRoute("GET", "/user/*", async (req, res) => {
 	await auth.getAdmin(req);
 
-	const id = basename(req.url);
+	const id = basename(req.pathname);
 	const user = await userRepository.findOneBy({ id });
 	if (!user) throw new RouterError("User not found", 400);
 	res.send({
@@ -36,7 +36,7 @@ router.defineRoute(
 	async (req, res, { validator }) => {
 		await auth.getAdmin(req);
 
-		const id = basename(dirname(req.url));
+		const id = basename(dirname(req.pathname));
 		const user = await userRepository.findOneBy({ id });
 		if (!user) throw new RouterError("User not found", 400);
 
@@ -62,7 +62,7 @@ router.defineRoute(
 router.defineRoute("DELETE", "/users/*", async (req, res) => {
 	await auth.getAdmin(req);
 
-	const id = basename(req.url);
+	const id = basename(req.pathname);
 	const user = await userRepository.findOneBy({ id });
 	if (!user) throw new RouterError("User not found", 400);
 

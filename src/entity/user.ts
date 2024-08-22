@@ -18,7 +18,7 @@ export class User {
 	@Column("varchar")
 	password: string;
 
-	constructor(value: Omit<Pretify<User>, "id" | "created_at" | "updated_at">) {
+	constructor(value: Omit<Pretify<User>, "id" | "created_at" | "updated_at" | "serialize">) {
 		Object.assign(this, value);
 	}
 

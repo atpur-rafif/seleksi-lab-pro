@@ -48,7 +48,7 @@ router.defineRoute("GET", "/films", async (_, res) => {
 });
 
 router.defineRoute("GET", "/films/*", async (req, res) => {
-	const id = basename(req.url);
+	const id = basename(req.pathname);
 	const film = await filmRepository.findOneBy({ id });
 	if (!film) throw new RouterError("Film not found", 404);
 	res.send({
@@ -100,7 +100,7 @@ router.defineRoute(
 	async (req, res, { validator }) => {
 		await auth.getAdmin(req);
 
-		const id = basename(req.url);
+		const id = basename(req.pathname);
 		const data = validator.validate(await parser.parse(req));
 		const film = await filmRepository.findOneBy({ id });
 		if (!film) throw new RouterError("Film not found", 404);
@@ -135,7 +135,7 @@ router.defineRoute(
 router.defineRoute("DELETE", "/films/*", async (req, res) => {
 	await auth.getAdmin(req);
 
-	const id = basename(req.url);
+	const id = basename(req.pathname);
 	const film = await filmRepository.findOneBy({ id });
 	if (!film) throw new RouterError("Film not found", 404);
 	filmRepository.remove(film);

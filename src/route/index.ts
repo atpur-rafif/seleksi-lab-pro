@@ -4,7 +4,7 @@ import { createReadStream, existsSync } from "fs";
 export const router = new Router();
 
 router.defineRoute("GET", "/static/*", async (req, res) => {
-	const filename = basename(req.url);
+	const filename = basename(req.pathname);
 	const path = resolve("static", filename);
 
 	if (!existsSync(path)) throw new RouterError("File not found", 404);

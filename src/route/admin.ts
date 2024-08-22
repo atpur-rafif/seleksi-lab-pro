@@ -23,7 +23,7 @@ router.defineRoute(
 		const result = await bcyrpt.compare(password, admin.password);
 		if (!result) throw new RouterError("Invalid credentials", 400);
 
-		const token = auth.sign({ name: admin.username, type: "admin" });
+		const token = auth.sign({ identifier: admin.username, type: "admin" });
 		res.send({
 			status: "success",
 			data: {
@@ -49,7 +49,7 @@ router.defineRoute("GET", "/self", async (req, res) => {
 		status: "success",
 		data: {
 			username,
-			token: auth.sign({ name: username, type: "admin" }),
+			token: auth.sign({ identifier: username, type: "admin" }),
 		},
 	});
 });
