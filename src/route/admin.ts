@@ -1,17 +1,14 @@
 import { Admin } from "../entity/admin";
 import { dataSource } from "../entity/config";
 import { auth } from "../module/auth";
-import { FormDataParser } from "../module/formData";
-import { FormFileIgnore } from "../module/formFile";
+import { JsonParser } from "../module/jsonParser";
 import { RouterError } from "../module/router";
 import { Validator } from "../module/validator";
 import { router } from "./index";
 import bcyrpt from "bcryptjs";
 
 const adminRepository = dataSource.getRepository(Admin);
-const parser = new FormDataParser({
-	formFile: new FormFileIgnore(),
-});
+const parser = new JsonParser();
 
 router.defineRoute(
 	"POST",

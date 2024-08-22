@@ -34,8 +34,10 @@ export class Router {
 		return Object.assign(res, {
 			send: (data: object | string) => {
 				let raw: string = "";
-				if (typeof data === "object") raw = JSON.stringify(data);
-				else if (typeof data === "string") raw = data;
+				if (typeof data === "object") {
+					res.setHeader("Content-Type", "application/json; charset=utf-8");
+					raw = JSON.stringify(data);
+				} else if (typeof data === "string") raw = data;
 				res.write(raw);
 				res.end();
 			},

@@ -70,6 +70,7 @@ export class Film {
 		return {
 			...serialized,
 			genre: this.genre,
+			id: this.id.toString(),
 		};
 	}
 }

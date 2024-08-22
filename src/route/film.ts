@@ -42,6 +42,7 @@ const parser = new FormDataParser({
 router.defineRoute("GET", "/films", async (_, res) => {
 	res.send({
 		status: "success",
+		message: "OK",
 		data: (await filmRepository.find()).map((v) => v.serialize()),
 	});
 });
@@ -50,7 +51,10 @@ router.defineRoute("GET", "/films/*", async (req, res) => {
 	const id = basename(req.url);
 	const film = await filmRepository.findOneBy({ id });
 	if (!film) throw new RouterError("Film not found", 404);
-	res.send(film.serialize());
+	res.send({
+		status: "success",
+		data: film.serialize(),
+	});
 });
 
 router.defineRoute(
@@ -100,7 +104,10 @@ router.defineRoute(
 		const data = validator.validate(await parser.parse(req));
 		const film = await filmRepository.findOneBy({ id });
 		if (!film) throw new RouterError("Film not found", 404);
-		Object.assign(film, data);
+		Object.assign(film, data, {
+			video_url: data.video,
+			cover_image_url: data.cover_image,
+		});
 		filmRepository.save(film);
 		res.send({
 			status: "success",
