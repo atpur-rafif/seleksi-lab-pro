@@ -8,13 +8,16 @@ export class FormDataParser {
 	private forcedFile: Set<string>;
 	private forcedArray: Set<string>;
 
-	constructor(
-		formFile: FormFile,
+	constructor({
+		formFile,
+		forceField,
+	}: {
+		formFile: FormFile;
 		forceField?: {
 			array?: string[];
 			file?: string[];
-		},
-	) {
+		};
+	}) {
 		this.formFile = formFile;
 
 		this.forcedArray = new Set(forceField.array);

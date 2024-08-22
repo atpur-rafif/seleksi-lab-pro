@@ -1,8 +1,8 @@
 import { RouterError } from "../module/router";
 import { router } from "./index";
 import { FormDataParser } from "../module/formData";
-import { FormFileToDisk } from "../module/formFile";
 import { Validator } from "../module/validator";
+import { FormFileToDisk } from "../module/formFileToDisk";
 
 router.defineRoute("GET", "/films", async (_req, _res) => {
 	throw new RouterError("Not implemented");
@@ -17,12 +17,13 @@ router.defineRoute(
 		res.send("WOKE");
 	},
 	{
-		parser: new FormDataParser(
-			new FormFileToDisk("http://localhost:8080/static/", "static"),
-			{
-				array: ["value"],
+		parser: new FormDataParser({
+			formFile: new FormFileToDisk("http://localhost:8080/static/", "static"),
+			forceField: {
+				array: ["genre"],
+				file: ["video", "cover_image"],
 			},
-		),
+		}),
 		validator: new Validator({
 			type: "object",
 			schema: {
@@ -34,8 +35,8 @@ router.defineRoute(
 				genre: { type: "array", item: { type: "string" } },
 				price: { type: "number" },
 				duration: { type: "number" },
-				video_url: { type: "string" },
-				cover_image_url: { type: "string", optional: true },
+				video: { type: "string" },
+				cover_image: { type: "string", optional: true },
 			},
 		}),
 	},
