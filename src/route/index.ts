@@ -1,6 +1,6 @@
-import { basename, resolve } from "node:path";
+import { basename, resolve } from "path";
 import { Router, RouterError } from "../module/router";
-import { createReadStream, existsSync } from "node:fs";
+import { createReadStream, existsSync } from "fs";
 export const router = new Router();
 
 router.defineRoute("GET", "/static/*", async (req, res) => {

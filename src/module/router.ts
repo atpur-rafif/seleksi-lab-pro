@@ -1,4 +1,4 @@
-import { createServer } from "node:http";
+import { createServer } from "http";
 import { PathInvoker } from "./invoker";
 
 type RequestResponse = typeof createServer extends (

@@ -6,7 +6,7 @@ import { FormFileToDisk } from "../module/formFileToDisk";
 import mime from "mime";
 import { filmRepository } from "../entity/repository";
 import { Film } from "../entity/film";
-import { basename } from "node:path";
+import { basename } from "path";
 
 const formFileToDisk = new FormFileToDisk(
 	"http://localhost:8080/static/",
@@ -46,7 +46,7 @@ router.defineRoute("GET", "/films", async (_, res) => {
 });
 
 router.defineRoute("GET", "/films/*", async (req, res) => {
-	const id = basename(req.url || "");
+	const id = basename(req.url);
 	const film = await filmRepository.findOneBy({ id });
 	if (!film) throw new RouterError("Film not found", 404);
 	res.send(film.serialize());
@@ -91,7 +91,7 @@ router.defineRoute(
 	"PUT",
 	"/films/*",
 	async (req, res, { validator }) => {
-		const id = basename(req.url || "");
+		const id = basename(req.url);
 		const data = validator.validate(await parser.parse(req));
 		const film = await filmRepository.findOneBy({ id });
 		if (!film) throw new RouterError("Film not found", 404);
@@ -121,7 +121,7 @@ router.defineRoute(
 );
 
 router.defineRoute("DELETE", "/films/*", async (req, res) => {
-	const id = basename(req.url || "");
+	const id = basename(req.url);
 	const film = await filmRepository.findOneBy({ id });
 	if (!film) throw new RouterError("Film not found", 404);
 	filmRepository.remove(film);

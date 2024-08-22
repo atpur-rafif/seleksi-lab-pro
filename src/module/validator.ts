@@ -56,27 +56,26 @@ export class Validator<T extends Field> {
 	}
 
 	private validateField<T extends Field>(key: string, value: any, field: T) {
-		let result: any = value;
 		switch (field.type) {
 			case "string":
 				if (typeof value !== "string") this.throwError(field.type, key);
-				break;
+				return value;
 			case "number":
 				if (typeof value === "string") value = parseInt(value);
 				if (typeof value !== "number" || Number.isNaN(value))
 					this.throwError(field.type, key);
-				break;
+				return parseInt(value);
 			case "array":
 				if (!Array.isArray(value)) this.throwError(field.type, key);
 				for (const [index, item] of value.entries()) {
 					const newKey = `${key}[${index}]`;
 					this.validateField(newKey, item, field.item);
 				}
-				break;
+				return value;
 			case "object":
 				if (typeof value !== "object") this.throwError(field.type, key);
 
-				result = {};
+				const result = {};
 				for (const [objectKey, objectField] of Object.entries(field.schema)) {
 					const item = value[objectKey];
 					if (objectField.optional && !item) continue;
@@ -84,14 +83,10 @@ export class Validator<T extends Field> {
 					const newKey = key ? `${key}.${objectKey}` : objectKey;
 					if (!item) throw new RouterError(`Empty '${newKey}' field`, 400);
 
-					this.validateField(newKey, item, objectField);
-					result[objectKey] = item;
+					result[objectKey] = this.validateField(newKey, item, objectField);
 				}
-
-				break;
+				return result;
 		}
-
-		return result as TypeFromField<T>;
 	}
 
 	validate(data: object) {
