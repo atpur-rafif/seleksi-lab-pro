@@ -182,14 +182,16 @@ router.defineRoute("GET", "/browse", async (req, res) => {
 
 	res.send(createHTML(`
 <main style="width: 100vw; display: flex; justify-content: center; align-items: center; flex-direction: column; gap: 2rem;">
-	<form style="padding-top: 3rem;">
-		(Page: <input type="number" name="page" value="${page}"/>)
-		(Bought Only: <input type="checkbox" name="boughtOnly" ${boughtOnly ? "checked" : ""}/>)
-		<input type="text" placeholder="Keyword" name="keyword" />
-		<button>Search</button>
+	<form style="padding-top: 3rem; display: flex; flex-direction: column">
+		<div>
+			(Page: <input type="number" name="page" value="${page}"/>)
+			(Bought Only: <input type="checkbox" name="boughtOnly" ${boughtOnly ? "checked" : ""}/>)
+			(<input type="text" placeholder="Keyword" name="keyword" />)
+		</div>
+		<button>Apply Filter</button>
 	</form>
 	<ul style="display:flex; flex-direction: row; gap: 1rem; flex-wrap: wrap; justify-content: center; align-items: center; position: relative; list-style-type: none; max-width: calc(100% - 4rem);">
-	${films.map(film => `
+	${films.length > 0 ? films.map(film => `
 		<li style="background-color: lightblue; padding: 2rem; aspect-ratio: 2/3; width: clamp(15rem, 10%, 30rem); position: relative; display: flex; flex-direction: column; overflow: hidden; text-align: center;">
 			<div style="margin-bottom: 0.5rem;">
 				<a href="/film-detail/${film.id}" style="text-decoration: none;">
@@ -201,7 +203,7 @@ router.defineRoute("GET", "/browse", async (req, res) => {
 			</div>
 			<h2 style="margin-top: 0.5rem;">${film.title}</h2>
 			<h3 style="margin: 0px;">${film.director}</h3>
-		</li>`).join("")}
+		</li>`).join("") : "<p>Film not found, try to reset filter</p>"}
 	</ul>
 </main>
 											`))
@@ -210,6 +212,13 @@ router.defineRoute("GET", "/browse", async (req, res) => {
 router.defineRoute("GET", "/film-detail/*", async (req, res) => {
 	const id = basename(req.pathname);
 	const film = await filmRepository.findOneBy({ id });
+
+	const user = await auth.getUser(req);
+	const boughtFilm = new Set((await userRepository.findOne({
+		where: { id: user.id },
+		relations: { films: true }
+	})).films.map(v => v.id))
+
 	res.send(createHTML(`
 <main style="width: 100%; height: 100%; position: relative; position: relative; display: flex; justify-content: center; align-items: center;">
 	<div style="overflow: hidden; display: flex; flex-direction: column; width: calc(100% - 5rem); height: calc(100% - 5rem); position: relative; background-color: lightgray">
@@ -230,9 +239,11 @@ router.defineRoute("GET", "/film-detail/*", async (req, res) => {
 			<p style="margin: auto 1rem auto auto;">
 				Duration ${Math.ceil(film.duration / 60)}min, Release year: ${film.release_year}, Price ${film.price}
 			</p>
-			<form style="margin: auto 1rem auto 0;" action="/buy/${film.id}">
-				<button>Buy</button>
-			</form>
+			${(user && !boughtFilm.has(id)) ?
+			`<form style="margin: auto 1rem auto 0;" action="/buy/${film.id}" method="POST">
+					<button>Buy</button>
+				</form>` : ""
+		}
 		</div>
 	</div>
 
@@ -250,7 +261,7 @@ router.defineRoute("POST", "/buy/*", async (req, res) => {
 		const { id: userId } = await auth.getUser(req)
 		const user = await userRepository.findOne({ where: { id: userId }, relations: { films: true } })
 
-		if (user.films.some(({ id: filmId }) => id === filmId.toString()))
+		if (user.films.some(({ id: filmId }) => id === filmId))
 			throw new RouterError("Film alrealdy bought")
 
 		if (!user) {
@@ -264,6 +275,10 @@ router.defineRoute("POST", "/buy/*", async (req, res) => {
 		if (!film)
 			throw new RouterError("Film not found")
 
+		if (user.balance < film.price)
+			throw new RouterError("Insufficiet balance")
+
+		user.balance -= film.price
 		user.films.push(film)
 		await userRepository.save(user);
 

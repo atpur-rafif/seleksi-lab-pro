@@ -10,7 +10,7 @@ import { Pretify } from "../module/type";
 @Entity()
 export class Film {
 	// @PrimaryGeneratedColumn("uuid")
-	@PrimaryGeneratedColumn("increment")
+	@PrimaryGeneratedColumn("uuid")
 	id: string;
 
 	@Column("varchar")
