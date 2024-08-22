@@ -19,11 +19,14 @@ export class FormDataParser {
 		try {
 			this.bb = busboy({ headers: request.headers });
 		} catch (error) {
-			throw new RouterError("Invalid body type", 400);
+			throw new RouterError(
+				"Error parsing the body (Only support multipart/formdata encoding)",
+				400,
+			);
 		}
 	}
 
-	private registerField(name: string, value: string, info: busboy.FieldInfo) {
+	private registerField(name: string, value: string, _: busboy.FieldInfo) {
 		if (this.data[name] === undefined) {
 			this.data[name] = value;
 			return;
