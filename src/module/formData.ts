@@ -3,12 +3,8 @@ import { Request, RouterError } from "./router";
 import internal from "stream";
 import { FormFile } from "./formFile";
 
-type FormDataResult = object;
 export class FormDataParser {
-	private data: FormDataResult;
-	private fileField: Set<string>;
 	private formFile: FormFile;
-
 	private forcedFile: Set<string>;
 	private forcedArray: Set<string>;
 
@@ -19,8 +15,6 @@ export class FormDataParser {
 			file?: string[];
 		},
 	) {
-		this.data = {};
-		this.fileField = new Set();
 		this.formFile = formFile;
 
 		this.forcedArray = new Set(forceField.array);
@@ -35,6 +29,7 @@ export class FormDataParser {
 	}
 
 	private async registerField(
+		data: object,
 		name: string,
 		value: string,
 		_: busboy.FieldInfo,
@@ -42,23 +37,23 @@ export class FormDataParser {
 		if (this.forcedFile.has(name))
 			throw new RouterError(`Expected file for field '${name}'`, 400);
 
-		if (this.data[name] === undefined) {
-			if (this.forcedArray.has(name)) this.data[name] = [value];
-			else this.data[name] = value;
+		if (data[name] === undefined) {
+			if (this.forcedArray.has(name)) data[name] = [value];
+			else data[name] = value;
 			return;
 		}
 
-		if (!Array.isArray(this.data[name])) this.data[name] = [this.data[name]];
-		if (Array.isArray(this.data[name])) this.data[name].push(value);
+		if (!Array.isArray(data[name])) data[name] = [data[name]];
+		if (Array.isArray(data[name])) data[name].push(value);
 	}
 
 	private async registerFile(
+		data: object,
 		name: string,
 		stream: internal.Readable,
 		info: busboy.FileInfo,
 	) {
-		this.data[name] = await this.formFile.save(name, stream, info);
-		this.fileField.add(name);
+		data[name] = await this.formFile.save(name, stream, info);
 	}
 
 	private wrapPromise(promise: Promise<void>): Promise<Error | void> {
@@ -70,15 +65,16 @@ export class FormDataParser {
 	async parse(request: Request) {
 		const promised: Promise<Error | void>[] = [];
 		const bb = busboy({ headers: request.headers });
+		const data = {};
 
 		const dataPromise = new Promise<void>((resolve) => {
 			bb.on("close", resolve);
 		});
 		bb.on("field", (...param) => {
-			promised.push(this.wrapPromise(this.registerField(...param)));
+			promised.push(this.wrapPromise(this.registerField(data, ...param)));
 		});
 		bb.on("file", (...param) => {
-			promised.push(this.wrapPromise(this.registerFile(...param)));
+			promised.push(this.wrapPromise(this.registerFile(data, ...param)));
 		});
 		request.pipe(bb);
 
@@ -92,6 +88,6 @@ export class FormDataParser {
 		}
 
 		await dataPromise;
-		return this.data;
+		return data;
 	}
 }

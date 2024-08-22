@@ -26,7 +26,16 @@ router.defineRoute(
 		validator: new Validator({
 			type: "object",
 			schema: {
-				value: { type: "array", item: { type: "string" } },
+				id: { type: "string" },
+				title: { type: "string" },
+				description: { type: "string" },
+				director: { type: "string" },
+				release_year: { type: "number" },
+				genre: { type: "array", item: { type: "string" } },
+				price: { type: "number" },
+				duration: { type: "number" },
+				video_url: { type: "string" },
+				cover_image_url: { type: "string", optional: true },
 			},
 		}),
 	},
