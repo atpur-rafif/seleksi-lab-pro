@@ -1,5 +1,6 @@
-import { Entity, Column, PrimaryGeneratedColumn } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, ManyToMany, JoinTable } from "typeorm";
 import { Pretify } from "../module/type";
+import { Film } from "./film";
 
 @Entity()
 export class User {
@@ -18,13 +19,18 @@ export class User {
 	@Column("varchar")
 	password: string;
 
-	constructor(value: Omit<Pretify<User>, "id" | "created_at" | "updated_at" | "serialize">) {
+	@ManyToMany(() => Film)
+	@JoinTable()
+	films: Film[]
+
+	constructor(value: Omit<Pretify<User>, "id" | "created_at" | "updated_at" | "serialize" | "films">) {
 		Object.assign(this, value);
 	}
 
 	serialize() {
 		const serialized = { ...this };
 		delete serialized.password;
+		delete serialized.films;
 		return serialized;
 	}
 }

@@ -1,6 +1,7 @@
 import { createServer } from "http";
 import { PathInvoker } from "./invoker";
 import { parse } from "url";
+import { ParsedUrlQuery, parse as parseQuery } from "querystring"
 
 type RequestResponse = typeof createServer extends (
 	config: any,
@@ -22,7 +23,7 @@ export class RouterError extends Error {
 
 type ExtendedRequest = Request & {
 	pathname: string,
-	param: Record<string, string>
+	param: ParsedUrlQuery
 }
 
 type ExtendedResponse = Response & {
@@ -51,9 +52,11 @@ export class Router {
 	}
 
 	private extendRequest(req: Request): ExtendedRequest {
+		const { pathname, query } = parse(req.url)
+		const param = parseQuery(query)
 		return Object.assign(req, {
-			param: {},
-			pathname: parse(req.url).pathname
+			param,
+			pathname
 		})
 	}
 

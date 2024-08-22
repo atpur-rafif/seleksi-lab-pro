@@ -68,7 +68,6 @@ router.defineRoute("POST", "/register", async (req, res, { validator, emailPatte
 		<button>Login</button>
 	</a>
 </main>
-
 												`))
 	} catch (e) {
 		if (!(e instanceof RouterError)) e = new RouterError("Unknown error")
@@ -123,7 +122,7 @@ router.defineRoute("POST", "/login", async (req, res, { validator }) => {
 		const data = validator.validate(await parser.parse(req))
 
 		const user = await userRepository.findOneBy({ email: data.email })
-		const result = await bcrypt.compare(data.password, user?.password)
+		const result = await bcrypt.compare(data.password, user?.password ?? "")
 		if (!user || !result)
 			throw new RouterError("Invalid credentials", 400)
 
@@ -155,15 +154,37 @@ router.defineRoute("POST", "/login", async (req, res, { validator }) => {
 	})
 })
 
+// I know this not the most eficient way to do query. Unfortunately, time not on my side (2 hour left).
+const pageSize = 10
 router.defineRoute("GET", "/browse", async (req, res) => {
-	const [film] = await filmRepository.find()
-	const films = Array(100).fill(film) as Film[]
+	let films = await filmRepository.find()
 	const user = await auth.getUser(req)
 
-	console.log(user)
+	const { page: rawPage, keyword, boughtOnly } = req.param
+	if (boughtOnly) {
+		const boughtFilm = new Set((await userRepository.findOne({
+			where: { id: user.id },
+			relations: { films: true }
+		})).films.map(v => v.id))
+		films = films.filter(({ id }) => boughtFilm.has(id))
+	}
+
+	if (typeof keyword === "string") {
+		const lowercaseKeywrod = keyword.toLowerCase()
+		films = films.filter(({ title, director }) => title.toLowerCase().includes(lowercaseKeywrod) || director.toLowerCase().includes(lowercaseKeywrod))
+	}
+
+	const maxPage = Math.ceil(films.length / pageSize)
+	let page = typeof rawPage === "string" ? parseInt(rawPage) : 1
+	if (page > maxPage) page = maxPage
+	if (Number.isNaN(page) || page < 1) page = 1
+	films = films.slice((page - 1) * pageSize, page * pageSize)
+
 	res.send(createHTML(`
 <main style="width: 100vw; display: flex; justify-content: center; align-items: center; flex-direction: column; gap: 2rem;">
-	<form>
+	<form style="padding-top: 3rem;">
+		(Page: <input type="number" name="page" value="${page}"/>)
+		(Bought Only: <input type="checkbox" name="boughtOnly" ${boughtOnly ? "checked" : ""}/>)
 		<input type="text" placeholder="Keyword" name="keyword" />
 		<button>Search</button>
 	</form>
@@ -174,10 +195,6 @@ router.defineRoute("GET", "/browse", async (req, res) => {
 				<a href="/film-detail/${film.id}" style="text-decoration: none;">
 					<button>Detail</button>
 				</a>
-				<form style="display: inline-block;">
-					<input name="id" value="${film.id}" style="display:none;" />
-					<button type="submit">Beli (${film.price}$)</button>
-				</form>
 			</div>
 			<div style="flex-grow: 1; overflow: hidden; display: flex; justify-content: center;">
 				<img src="${film.cover_image_url}" style="height: 100%; aspect-ratio: 2/3; object-fit: cover;" />
@@ -193,7 +210,6 @@ router.defineRoute("GET", "/browse", async (req, res) => {
 router.defineRoute("GET", "/film-detail/*", async (req, res) => {
 	const id = basename(req.pathname);
 	const film = await filmRepository.findOneBy({ id });
-	console.log(film)
 	res.send(createHTML(`
 <main style="width: 100%; height: 100%; position: relative; position: relative; display: flex; justify-content: center; align-items: center;">
 	<div style="overflow: hidden; display: flex; flex-direction: column; width: calc(100% - 5rem); height: calc(100% - 5rem); position: relative; background-color: lightgray">
@@ -214,6 +230,9 @@ router.defineRoute("GET", "/film-detail/*", async (req, res) => {
 			<p style="margin: auto 1rem auto auto;">
 				Duration ${Math.ceil(film.duration / 60)}min, Release year: ${film.release_year}, Price ${film.price}
 			</p>
+			<form style="margin: auto 1rem auto 0;" action="/buy/${film.id}">
+				<button>Buy</button>
+			</form>
 		</div>
 	</div>
 
@@ -225,6 +244,42 @@ router.defineRoute("GET", "/film-detail/*", async (req, res) => {
 											`))
 })
 
+router.defineRoute("POST", "/buy/*", async (req, res) => {
+	try {
+		const id = basename(req.pathname)
+		const { id: userId } = await auth.getUser(req)
+		const user = await userRepository.findOne({ where: { id: userId }, relations: { films: true } })
 
+		if (user.films.some(({ id: filmId }) => id === filmId.toString()))
+			throw new RouterError("Film alrealdy bought")
 
+		if (!user) {
+			res.statusCode = 303
+			res.setHeader("Location", "/login")
+			res.end();
+			return;
+		}
+
+		const film = await filmRepository.findOneBy({ id })
+		if (!film)
+			throw new RouterError("Film not found")
+
+		user.films.push(film)
+		await userRepository.save(user);
+
+		res.statusCode = 303
+		res.setHeader("Location", `/film-detail/${film.id}`)
+		res.end();
+	} catch (e) {
+		if (!(e instanceof RouterError)) e = new RouterError("Unknown error")
+		res.send(createHTML(`
+<main style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; width: 100%; gap: 0.5rem;">
+	${e.message}
+	<a href="/browse" style="text-decoration: none;">
+		<button>Browse</button>
+	</a>
+</main>
+											`))
+	}
+})
 

@@ -32,18 +32,18 @@ class Auth {
 		if (!data || !data["jwt-token"]) return null;
 
 		const token = data["jwt-token"]
-		const { identifier: name, type } = this.decode(token)
+		const { identifier, type } = this.decode(token)
 		if (type !== "user") return null;
 
-		const user = await userRepository.findOneBy({ email: name });
+		const user = await userRepository.findOneBy({ email: identifier });
 		return user;
 	}
 
 	async getAdmin(req: Request) {
-		const { identifier: name, type } = this.get(req);
+		const { identifier, type } = this.get(req);
 		if (type !== "admin") throw new RouterError("Invalid account type", 400);
 
-		const admin = await adminRepository.findOneBy({ username: name });
+		const admin = await adminRepository.findOneBy({ username: identifier });
 		if (!admin) throw new RouterError("Admin account not found", 400);
 
 		return admin;
