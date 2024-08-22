@@ -1,6 +1,5 @@
 import { basename } from "path";
 import { router } from ".";
-import { Film } from "../entity/film";
 import { filmRepository, userRepository } from "../entity/repository";
 import { FormDataParser } from "../module/formData";
 import { FormFileIgnore } from "../module/formFile";
@@ -11,12 +10,18 @@ import bcrypt from "bcryptjs"
 import { auth } from "../module/auth";
 
 const parser = new FormDataParser({ formFile: new FormFileIgnore() })
-function createHTML(body: string) {
+function createHTML(body: string, user: User) {
 	return `
 <!DOCTYPE html>
 <html>
 	<head></head>
 		<body style="width: 100vw; height: 100vh; margin: 0px; font-family: Arial; position: relative;"> 
+			<navbar style="display: flex; flex-direction: row; gap: 2rem; padding: 1rem 1rem 0 1rem;">
+				<a href="/browse">Browse</a>
+				${user ? "" : `<a href="/user-login">Login</a>`}
+				${user ? `<a href="/user-logout">Logout</a>` : ""}
+				<p style="margin: 0 0 0 auto;">${user ? `${user.username} (${user.balance})` : `(Not logged in)`}</p>
+			</navbar>
 			${body}
 		</body>
 </html>
@@ -42,10 +47,11 @@ router.defineRoute("GET", "/user-register", async (req, res) => {
 		<button type="submit">Register</button>
 	</form>
 </main>
-											`))
+											`, user))
 })
 
 router.defineRoute("POST", "/user-register", async (req, res, { validator, emailPattern }) => {
+	const user = await auth.getUser(req);
 	try {
 		const data = validator.validate(await parser.parse(req))
 		if (!emailPattern.test(data.email))
@@ -71,7 +77,7 @@ router.defineRoute("POST", "/user-register", async (req, res, { validator, email
 		<button>Login</button>
 	</a>
 </main>
-												`))
+												`, user))
 	} catch (e) {
 		if (!(e instanceof RouterError)) e = new RouterError("Unknown error")
 		res.send(createHTML(`
@@ -85,7 +91,7 @@ router.defineRoute("POST", "/user-register", async (req, res, { validator, email
 		<button type="submit">Register</button>
 	</form>
 </main>
-											`))
+											`, user))
 	}
 }, {
 	emailPattern: /^\S+@\S+\.(\S+){2,}$/,
@@ -112,15 +118,16 @@ router.defineRoute("GET", "/user-login", async (req, res) => {
 <main style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; width: 100%;">
 	<h1>Login</h1>
 	<form method="POST" style="display: flex; flex-direction: column; gap: 0.5rem;">
-		<input type="text" name="email" placeholder="email" value="test"/>
-		<input type="text" name="password" placeholder="password" value="test"/>
+		<input type="text" name="email" placeholder="email"/>
+		<input type="text" name="password" placeholder="password"/>
 		<button type="submit">Login</button>
 	</form>
 </main>
-											`))
+											`, user))
 })
 
 router.defineRoute("POST", "/user-login", async (req, res, { validator }) => {
+	const user = await auth.getUser(req);
 	try {
 		const data = validator.validate(await parser.parse(req))
 
@@ -145,7 +152,7 @@ router.defineRoute("POST", "/user-login", async (req, res, { validator }) => {
 		<button type="submit">Login</button>
 	</form>
 </main>
-											`))
+											`, user))
 	}
 }, {
 	validator: new Validator({
@@ -216,7 +223,7 @@ router.defineRoute("GET", "/browse", async (req, res) => {
 		</li>`).join("") : "<p>Film not found, try to reset filter</p>"}
 	</ul>
 </main>
-											`))
+											`, user))
 })
 
 router.defineRoute("GET", "/film-detail/*", async (req, res) => {
@@ -224,10 +231,10 @@ router.defineRoute("GET", "/film-detail/*", async (req, res) => {
 	const film = await filmRepository.findOneBy({ id });
 
 	const user = await auth.getUser(req);
-	const boughtFilm = new Set((await userRepository.findOne({
+	const boughtFilm = user ? new Set((await userRepository.findOne({
 		where: { id: user.id },
 		relations: { films: true }
-	})).films.map(v => v.id))
+	})).films.map(v => v.id)).has(id) : false
 
 	res.send(createHTML(`
 <main style="width: 100%; height: 100%; position: relative; position: relative; display: flex; justify-content: center; align-items: center;">
@@ -237,9 +244,14 @@ router.defineRoute("GET", "/film-detail/*", async (req, res) => {
 			<h2 style="margin: 0; margin-left: auto;">${film.director}</h2>
 		</div>
 		<div style="overflow: hidden; width: 100%; flex-grow: 1; background-color: black; display: flex; align-items: center; justify-content: center;">
+			${boughtFilm ? `
 			<video style="height: calc(100% - 3rem); width: calc(100% - 3rem)" controls>
 				<source src="${film.video_url}"/>
 			</video>
+			` : `
+				<img src=${film.cover_image_url}>
+			`
+		}
 		</div>
 		<div style="display: flex; flex-direction: row; position: relative;">
 			<div style="display: flex; flex-direction: row; gap: 0.5rem; font-size: 0.7rem; padding: 0.5rem;">
@@ -249,23 +261,19 @@ router.defineRoute("GET", "/film-detail/*", async (req, res) => {
 			<p style="margin: auto 1rem auto auto;">
 				Duration ${Math.ceil(film.duration / 60)}min, Release year: ${film.release_year}, Price ${film.price}
 			</p>
-			${(user && !boughtFilm.has(id)) ?
+			${(user && !boughtFilm) ?
 			`<form style="margin: auto 1rem auto 0;" action="/buy/${film.id}" method="POST">
 					<button>Buy</button>
 				</form>` : ""
 		}
 		</div>
 	</div>
-
-	<div style="display:none">
-	${film.cover_image_url}
-	</div>
-
 </main>
-											`))
+											`, user))
 })
 
 router.defineRoute("POST", "/buy/*", async (req, res) => {
+	const user = await auth.getUser(req)
 	try {
 		const id = basename(req.pathname)
 		const { id: userId } = await auth.getUser(req)
@@ -304,7 +312,7 @@ router.defineRoute("POST", "/buy/*", async (req, res) => {
 		<button>Browse</button>
 	</a>
 </main>
-											`))
+											`, user))
 	}
 })
 
