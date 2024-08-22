@@ -2,6 +2,7 @@ import { createServer } from "http";
 import { router } from "./route/index";
 import "./route/film";
 import "./route/user";
+import "./route/user-view";
 import "./route/admin";
 import { dataSource } from "./entity/config";
 import { parse } from "url";
