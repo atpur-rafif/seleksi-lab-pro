@@ -9,13 +9,14 @@ Database yang digunakan adalah sqlite, sehingga tidak memerlukan dua container. 
 ```
 docker compose up
 ```
+Program akan berjalan pada `http://localhost:8080`
 
 Jika ingin menjalankan seperti biasa, berikut merupakan langkahnya:
 1. Install dependensi `npm i`
 1. Transpile typescript ke javascript `node build.mjs`
 1. Jalankan program `node dist.js`
 
-Catatan: Pada admin menggunakan username berupa `admin` dan password berupa `adminaadmin`. Sedangkan tidak terdapat pengguna biasa secara default.  
+Catatan: Pada admin menggunakan username berupa `admin` dan password berupa `adminaadmin`. Sedangkan tidak terdapat pengguna biasa secara default. Selain itu, tambahkan flag `-w` pada perintah transpile untuk developing, agar kode akan ditranspile ulang setiap ada perubahan.
 
 ## Design Pattern
 1. Strategy: Secara garis besar, pada sebuah server, router merupakan penentu fungsi yang dijalankan ketika client melakukan request. Pada kode ini, terdapat kelas `PathInvoker` yang kita dapat definisikan konfigurasi path dan fungsi (atau strategi). Lalu diturunkan menjadi kelas `Router` untuk mendukung method pada request. Terdapat method `defineRoute` untuk mengkonfigurasikan strategi yang digunakan. Sehingga router ini akan menentuk fungsi (atau strategi) yang harus dijalankan sesuai konfigurasi yang diberikan.

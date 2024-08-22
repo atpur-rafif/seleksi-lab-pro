@@ -7,17 +7,20 @@ import "./route/admin";
 import { dataSource } from "./entity/config";
 import { parse } from "url";
 import { adminRepository } from "./entity/repository";
+import { Admin } from "./entity/admin";
+import bcrypt from "bcryptjs";
 
 async function main() {
 	await dataSource.initialize();
 
-	const admin = adminRepository.findBy({ username: "admin" })
+	const admin = await adminRepository.existsBy({ username: "admin" });
 	if (!admin) {
-		adminRepository.create({
+		const newAdmin = new Admin({
 			username: "admin",
-			password: "adminadmin",
+			password: await bcrypt.hash("adminadmin", 10),
 			email: "admin@example.com",
-		})
+		});
+		await adminRepository.save(newAdmin);
 	}
 
 	const server = createServer({}, (req, res) => {
