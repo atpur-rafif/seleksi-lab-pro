@@ -5,19 +5,27 @@ import { FormFile } from "./formFile";
 
 type FormDataResult = object;
 export class FormDataParser {
-	private req: Request;
-	private bb: busboy.Busboy;
 	private data: FormDataResult;
 	private fileField: Set<string>;
 	private formFile: FormFile;
 
-	constructor(request: Request, formFile: FormFile) {
-		this.req = request;
+	private forcedFile: Set<string>;
+	private forcedArray: Set<string>;
+
+	constructor(
+		formFile: FormFile,
+		forceField?: {
+			array?: string[];
+			file?: string[];
+		},
+	) {
 		this.data = {};
 		this.fileField = new Set();
 		this.formFile = formFile;
+
+		this.forcedArray = new Set(forceField.array);
+		this.forcedFile = new Set(forceField.file);
 		try {
-			this.bb = busboy({ headers: request.headers });
 		} catch (error) {
 			throw new RouterError(
 				"Error parsing the body (Only support multipart/formdata encoding)",
@@ -26,9 +34,17 @@ export class FormDataParser {
 		}
 	}
 
-	private registerField(name: string, value: string, _: busboy.FieldInfo) {
+	private async registerField(
+		name: string,
+		value: string,
+		_: busboy.FieldInfo,
+	) {
+		if (this.forcedFile.has(name))
+			throw new RouterError(`Expected file for field '${name}'`, 400);
+
 		if (this.data[name] === undefined) {
-			this.data[name] = value;
+			if (this.forcedArray.has(name)) this.data[name] = [value];
+			else this.data[name] = value;
 			return;
 		}
 
@@ -45,26 +61,34 @@ export class FormDataParser {
 		this.fileField.add(name);
 	}
 
-	getFileField() {
-		return this.fileField;
+	private wrapPromise(promise: Promise<void>): Promise<Error | void> {
+		return new Promise((resolve, _) => {
+			promise.then(resolve).catch((e) => resolve(e));
+		});
 	}
 
-	async parse() {
-		const promised = [];
+	async parse(request: Request) {
+		const promised: Promise<Error | void>[] = [];
+		const bb = busboy({ headers: request.headers });
 
 		const dataPromise = new Promise<void>((resolve) => {
-			this.bb.on("close", resolve);
+			bb.on("close", resolve);
 		});
-		this.bb.on("field", (...param) => this.registerField(...param));
-		this.bb.on("file", (...param) =>
-			promised.push(this.registerFile(...param)),
-		);
-		this.req.pipe(this.bb);
+		bb.on("field", (...param) => {
+			promised.push(this.wrapPromise(this.registerField(...param)));
+		});
+		bb.on("file", (...param) => {
+			promised.push(this.wrapPromise(this.registerFile(...param)));
+		});
+		request.pipe(bb);
 
 		let resolved = [];
 		promised.push(dataPromise);
 		while (resolved.length !== promised.length) {
 			resolved = await Promise.all(promised);
+			resolved.map((e) => {
+				if (e) throw e;
+			});
 		}
 
 		await dataPromise;

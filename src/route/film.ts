@@ -8,18 +8,23 @@ router.defineRoute("GET", "/films", async (_req, _res) => {
 	throw new RouterError("Not implemented");
 });
 
+const filmPostParser = new FormDataParser(
+	new FormFileToDisk("http://localhost:8080/static/", "static"),
+	{
+		array: ["value"],
+		file: ["entah"],
+	},
+);
 const filmsPostValidator = new Validator({
 	type: "object",
 	schema: {
-		value: { type: "string" },
+		value: { type: "array", item: { type: "string" } },
 	},
 });
 router.defineRoute("POST", "/films", async (req, res) => {
-	const parser = new FormDataParser(
-		req,
-		new FormFileToDisk("http://localhost:8080/static/", "static"),
+	const validatedData = filmsPostValidator.validate(
+		await filmPostParser.parse(req),
 	);
-	const validatedData = filmsPostValidator.validate(await parser.parse());
 	console.log(validatedData);
 	res.send("WOKE");
 });

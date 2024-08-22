@@ -50,7 +50,7 @@ export class Validator<T extends Field> {
 
 	private throwError(datatype: string, key: string) {
 		throw new RouterError(
-			`Expected ${datatype}${key ? ` for '${key}' field` : ""}!`,
+			`Expected ${datatype}${key ? ` for field '${key}'` : ""}!`,
 			400,
 		);
 	}
