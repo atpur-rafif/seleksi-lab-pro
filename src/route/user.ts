@@ -3,13 +3,10 @@ import { userRepository } from "../entity/repository";
 import { RouterError } from "../module/router";
 import { router } from "./index";
 import { Validator } from "../module/validator";
-import { FormDataParser } from "../module/formData";
-import { FormFileIgnore } from "../module/formFile";
 import { auth } from "../module/auth";
+import { JsonParser } from "../module/jsonParser";
 
-const parser = new FormDataParser({
-	formFile: new FormFileIgnore(),
-});
+const parser = new JsonParser();
 
 router.defineRoute("GET", "/users", async (req, res) => {
 	await auth.getAdmin(req);
@@ -17,7 +14,7 @@ router.defineRoute("GET", "/users", async (req, res) => {
 	const users = await userRepository.find();
 	res.send({
 		status: "success",
-		data: users,
+		data: users.map((v) => v.serialize()),
 	});
 });
 
@@ -29,7 +26,7 @@ router.defineRoute("GET", "/user/*", async (req, res) => {
 	if (!user) throw new RouterError("User not found", 400);
 	res.send({
 		status: "success",
-		data: user,
+		data: user.serialize(),
 	});
 });
 
